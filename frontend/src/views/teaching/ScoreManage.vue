@@ -6,7 +6,7 @@
           <el-option v-for="e in examOptions" :key="e.id" :label="e.name" :value="e.id" />
         </el-select>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 录入成绩</el-button>
+        <el-button v-permission="'teaching:score:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 录入成绩</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -28,16 +28,16 @@
         <el-table-column label="等级" width="80">
           <template #default="{ row }">
             <el-tag v-if="row.score >= 90" type="success" size="small">优秀</el-tag>
-            <el-tag v-else-if="row.score >= 80" type="" size="small">良好</el-tag>
+            <el-tag v-else-if="row.score >= 80" type="primary" size="small">良好</el-tag>
             <el-tag v-else-if="row.score >= 70" type="info" size="small">中等</el-tag>
             <el-tag v-else-if="row.score >= 60" type="warning" size="small">及格</el-tag>
             <el-tag v-else type="danger" size="small">不及格</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'teaching:score:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('teaching:score:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -85,6 +85,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { scoreApi, examApi, studentApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -95,6 +96,7 @@ const total = ref(0)
 const examOptions = ref<any[]>([])
 const studentOptions = ref<any[]>([])
 const editId = ref(0)
+const canManage = hasPermission(['teaching:score:update', 'teaching:score:delete'])
 
 const query = reactive({ page: 1, page_size: 10, exam_id: undefined as number | undefined })
 

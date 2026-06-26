@@ -6,7 +6,7 @@
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增院系</el-button>
+        <el-button v-permission="'org:department:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增院系</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -20,10 +20,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'org:department:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('org:department:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -60,6 +60,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { departmentApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -67,6 +68,7 @@ const isEdit = ref(false)
 const formRef = ref()
 const tableData = ref<any[]>([])
 const query = reactive({ keyword: '' })
+const canManage = hasPermission(['org:department:update', 'org:department:delete'])
 
 const form = reactive({ name: '', code: '', status: 1 })
 const rules = {

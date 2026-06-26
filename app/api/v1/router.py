@@ -18,11 +18,21 @@ from app.api.v1.announcement import router as announcement_router
 from app.api.v1.email import router as email_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.rag import router as rag_router
+from app.api.v1.rag_qa import router as rag_qa_router
+from app.api.v1.nl_db import router as nl_db_router
+from app.api.v1.face import router as face_router
+from app.api.v1.leave import router as leave_router
+from app.api.v1.attendance import router as attendance_router
+from app.api.v1.schedule import router as schedule_router
+from app.api.v1.operations import router as operations_router
+from app.api.v1.notification import router as notification_router
+from app.api.v1.campus_agent import router as campus_agent_router
 
 api_router = APIRouter()
 
 api_router.include_router(common_router)
 api_router.include_router(auth_router)
+api_router.include_router(face_router)
 api_router.include_router(user_router)
 api_router.include_router(role_router)
 api_router.include_router(department_router)
@@ -36,3 +46,11 @@ api_router.include_router(announcement_router)
 api_router.include_router(email_router)
 api_router.include_router(ai_router)
 api_router.include_router(rag_router)
+api_router.include_router(rag_qa_router)
+api_router.include_router(nl_db_router)
+api_router.include_router(leave_router)
+api_router.include_router(attendance_router)
+api_router.include_router(schedule_router)
+api_router.include_router(operations_router)
+api_router.include_router(notification_router)
+api_router.include_router(campus_agent_router)

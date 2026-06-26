@@ -35,7 +35,8 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
-    ElMessage.error(error.message || '网络异常')
+    const message = error.response?.data?.message || error.message || '网络异常'
+    ElMessage.error(message)
     return Promise.reject(error)
   }
 )

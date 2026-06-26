@@ -50,7 +50,7 @@ export function deleteEmail(id: number, as_recipient: boolean = true) {
 
 // 搜索用户建议（写信时搜索收件人）
 export function suggestUsers(keyword: string) {
-  return request.get('/emails/users/suggest', { params: { keyword } })
+  return request.get('/emails/users/suggest', { params: { keyword: keyword || '', limit: 20 } })
 }
 
 // 下载附件（备选方案，实际由后端静态文件或 download 端点处理）

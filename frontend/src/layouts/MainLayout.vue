@@ -36,7 +36,7 @@
             >
               <template #title>
                 <el-icon>
-                  <component :is="item.icon || 'Folder'" />
+                  <component :is="getIconComponent(item.icon)" />
                 </el-icon>
                 <span>{{ item.name }}</span>
               </template>
@@ -46,14 +46,14 @@
                 :index="child.path"
               >
                 <el-icon>
-                  <component :is="child.icon || 'Document'" />
+                  <component :is="getIconComponent(child.icon)" />
                 </el-icon>
                 <span>{{ child.name }}</span>
               </el-menu-item>
             </el-sub-menu>
             <el-menu-item v-else-if="item.path && item.path !== '/dashboard'" :index="item.path">
               <el-icon>
-                <component :is="item.icon || 'Document'" />
+                <component :is="getIconComponent(item.icon)" />
               </el-icon>
               <template #title>{{ item.name }}</template>
             </el-menu-item>
@@ -103,6 +103,7 @@
   </el-container>
 
   <!-- AI 助手气泡 -->
+  <FloatingWeather :offset-left="isCollapse ? 84 : 240" />
   <AIAssistant />
 
   <!-- 修改密码对话框 -->
@@ -129,11 +130,73 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { changePassword } from '@/api/auth'
 import AIAssistant from '@/components/AIAssistant.vue'
-import { UserFilled } from '@element-plus/icons-vue'
+import FloatingWeather from '@/components/FloatingWeather.vue'
+import { 
+  UserFilled, HomeFilled, Folder, Document, 
+  Lock, Reading, Collection, Camera,
+  Menu, Search, Plus, Edit, Delete,
+  PieChart, Calendar, Bell,
+  Download, Upload,
+  ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
+  Check, CircleCheck, CircleClose,
+  InfoFilled,
+  Message, Phone,
+  MapLocation, Link,
+  Monitor, Mouse,
+  Printer, Cpu,
+  Grid, List,
+  VideoPlay, VideoPause,
+  Picture, CameraFilled,
+  User,
+  Unlock, Key,
+  Setting, Tools,
+  Clock, Timer,
+  Ticket,
+  ShoppingCart,
+  BellFilled,
+  Help, HelpFilled,
+  CirclePlus,
+  School, OfficeBuilding, Avatar, Postcard, Notebook,
+  Tickets, DataAnalysis, Promotion, EditPen,
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const iconMap: Record<string, any> = {
+  UserFilled, HomeFilled, Folder, Document,
+  Lock, Reading, Collection, Camera,
+  Menu, Search, Plus, Edit, Delete,
+  PieChart, Calendar, Bell,
+  Download, Upload,
+  ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
+  Check, CircleCheck, CircleClose,
+  InfoFilled,
+  Message, Phone,
+  MapLocation, Link,
+  Monitor, Mouse,
+  Printer, Cpu,
+  Grid, List,
+  VideoPlay, VideoPause,
+  Picture, CameraFilled,
+  User,
+  Unlock, Key,
+  Setting, Tools,
+  Clock, Timer,
+  Ticket,
+  ShoppingCart,
+  BellFilled,
+  Help, HelpFilled,
+  CirclePlus,
+  School, OfficeBuilding, Avatar, Postcard, Notebook,
+  Tickets, DataAnalysis, Promotion, EditPen,
+}
+
+const getIconComponent = (iconName: string | undefined) => {
+  if (!iconName) return Document
+  return iconMap[iconName] || Document
+}
 
 const isCollapse = ref(false)
 const pwdVisible = ref(false)
@@ -154,8 +217,16 @@ const roleNames = computed(() => {
 
 // 菜单项：从 store 获取后端返回的菜单树
 const menuItems = computed(() => {
-  const items = userStore.menus || []
-  return items
+  const normalize = (items: any[]): any[] => {
+    return (items || [])
+      .filter((item: any) => item.type !== 3 && item.path)
+      .map((item: any) => ({
+        ...item,
+        children: normalize(item.children || []),
+      }))
+      .filter((item: any) => item.type === 2 || item.children.length > 0)
+  }
+  return normalize(userStore.menus || [])
 })
 
 const validateNewPwd = (_: any, value: string, cb: any) => {

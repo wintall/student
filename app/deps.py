@@ -8,7 +8,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.exceptions import AuthenticationError
+from app.exceptions import AuthenticationError, PermissionDenied
+from app.core.permissions import has_permission
 from app.core.security import decode_token
 from app.models.user import User
 
@@ -76,3 +77,20 @@ def get_optional_user(
     if not user_id:
         return None
     return db.query(User).filter(User.id == int(user_id), User.is_deleted == False).first()
+
+
+def require_permission(permission_code: str | list[str]):
+    """FastAPI dependency factory for RBAC permission checks."""
+    def checker(
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        if isinstance(permission_code, list):
+            allowed = any(has_permission(user, db, code) for code in permission_code)
+        else:
+            allowed = has_permission(user, db, permission_code)
+        if not allowed:
+            raise PermissionDenied("无权执行此操作")
+        return user
+
+    return checker

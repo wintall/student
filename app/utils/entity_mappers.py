@@ -124,6 +124,7 @@ def teacher_to_dict(t) -> Optional[Dict[str, Any]]:
             "employee_no": getattr(t, "employee_no", ""),
             "name": getattr(t, "name", ""),
             "gender": getattr(t, "gender", 1),
+            "id_card": getattr(t, "id_card", ""),
             "position": getattr(t, "position", ""),
             "title": getattr(t, "title", ""),
             "department_id": getattr(t, "department_id", None),
@@ -159,6 +160,7 @@ def student_to_dict(s) -> Optional[Dict[str, Any]]:
             "student_no": getattr(s, "student_no", ""),
             "name": getattr(s, "name", ""),
             "gender": getattr(s, "gender", 1),
+            "id_card": getattr(s, "id_card", ""),
             "phone": getattr(user, "phone", "") if user else "",
             "email": getattr(user, "email", "") if user else "",
             "username": getattr(user, "username", "") if user else "",
@@ -296,6 +298,194 @@ def announcement_to_dict(a) -> Optional[Dict[str, Any]]:
         }
     except Exception:
         return {"id": getattr(a, "id", None), "title": getattr(a, "title", "")}
+
+
+# ============================================================
+# LeaveRequest 实体映射
+# ============================================================
+
+def leave_request_to_dict(lr) -> Optional[Dict[str, Any]]:
+    if not lr:
+        return None
+    try:
+        applicant = getattr(lr, "applicant", None)
+        reviewer = getattr(lr, "reviewer", None)
+        student = getattr(lr, "student", None)
+        teacher = getattr(lr, "teacher", None)
+        clazz = getattr(lr, "clazz", None)
+        department = getattr(lr, "department", None)
+        applicant_name = getattr(applicant, "real_name", "") if applicant else ""
+        if not applicant_name:
+            applicant_name = getattr(student, "name", "") if student else getattr(teacher, "name", "")
+        return {
+            "id": lr.id,
+            "applicant_user_id": getattr(lr, "applicant_user_id", None),
+            "applicant_type": getattr(lr, "applicant_type", ""),
+            "applicant_name": applicant_name,
+            "applicant_username": getattr(applicant, "username", "") if applicant else "",
+            "student_id": getattr(lr, "student_id", None),
+            "student_no": getattr(student, "student_no", "") if student else "",
+            "teacher_id": getattr(lr, "teacher_id", None),
+            "employee_no": getattr(teacher, "employee_no", "") if teacher else "",
+            "clazz_id": getattr(lr, "clazz_id", None),
+            "clazz_name": getattr(clazz, "name", "") if clazz else "",
+            "department_id": getattr(lr, "department_id", None),
+            "department_name": getattr(department, "name", "") if department else "",
+            "leave_type": getattr(lr, "leave_type", ""),
+            "start_time": _format_dt(getattr(lr, "start_time", None)),
+            "end_time": _format_dt(getattr(lr, "end_time", None)),
+            "duration_hours": float(getattr(lr, "duration_hours", 0) or 0),
+            "reason": getattr(lr, "reason", ""),
+            "destination": getattr(lr, "destination", ""),
+            "contact_phone": getattr(lr, "contact_phone", ""),
+            "emergency_contact": getattr(lr, "emergency_contact", ""),
+            "attachment_url": getattr(lr, "attachment_url", ""),
+            "remark": getattr(lr, "remark", ""),
+            "status": getattr(lr, "status", ""),
+            "reviewer_id": getattr(lr, "reviewer_id", None),
+            "reviewer_name": getattr(reviewer, "real_name", "") if reviewer else "",
+            "reviewer_role": getattr(lr, "reviewer_role", ""),
+            "review_comment": getattr(lr, "review_comment", ""),
+            "reviewed_at": _format_dt(getattr(lr, "reviewed_at", None)),
+            "created_at": _format_dt(getattr(lr, "created_at", None)),
+            "updated_at": _format_dt(getattr(lr, "updated_at", None)),
+        }
+    except Exception:
+        return {"id": getattr(lr, "id", None), "status": getattr(lr, "status", "")}
+
+
+# ============================================================
+# AttendanceRecord 实体映射
+# ============================================================
+
+def attendance_record_to_dict(ar) -> Optional[Dict[str, Any]]:
+    if not ar:
+        return None
+    try:
+        user = getattr(ar, "user", None)
+        student = getattr(ar, "student", None)
+        teacher = getattr(ar, "teacher", None)
+        clazz = getattr(ar, "clazz", None)
+        department = getattr(ar, "department", None)
+        schedule = getattr(ar, "course_schedule", None)
+        leave_request = getattr(ar, "leave_request", None)
+        person_name = getattr(student, "name", "") if student else getattr(teacher, "name", "")
+        if not person_name:
+            person_name = getattr(user, "real_name", "") if user else ""
+        return {
+            "id": ar.id,
+            "person_type": getattr(ar, "person_type", ""),
+            "user_id": getattr(ar, "user_id", None),
+            "person_name": person_name,
+            "username": getattr(user, "username", "") if user else "",
+            "student_id": getattr(ar, "student_id", None),
+            "student_no": getattr(student, "student_no", "") if student else "",
+            "teacher_id": getattr(ar, "teacher_id", None),
+            "employee_no": getattr(teacher, "employee_no", "") if teacher else "",
+            "clazz_id": getattr(ar, "clazz_id", None),
+            "clazz_name": getattr(clazz, "name", "") if clazz else "",
+            "department_id": getattr(ar, "department_id", None),
+            "department_name": getattr(department, "name", "") if department else "",
+            "attendance_date": _format_dt(getattr(ar, "attendance_date", None)),
+            "period_type": getattr(ar, "period_type", ""),
+            "course_schedule_id": getattr(ar, "course_schedule_id", None),
+            "course_name": getattr(getattr(schedule, "course", None), "name", "") if schedule else "",
+            "checkin_time": _format_dt(getattr(ar, "checkin_time", None)),
+            "checkout_time": _format_dt(getattr(ar, "checkout_time", None)),
+            "status": getattr(ar, "status", ""),
+            "source": getattr(ar, "source", ""),
+            "leave_request_id": getattr(ar, "leave_request_id", None),
+            "leave_reason": getattr(leave_request, "reason", "") if leave_request else "",
+            "remark": getattr(ar, "remark", ""),
+            "created_by": getattr(ar, "created_by", None),
+            "updated_by": getattr(ar, "updated_by", None),
+            "created_at": _format_dt(getattr(ar, "created_at", None)),
+            "updated_at": _format_dt(getattr(ar, "updated_at", None)),
+        }
+    except Exception:
+        return {"id": getattr(ar, "id", None), "status": getattr(ar, "status", "")}
+
+
+# ============================================================
+# Schedule entities
+# ============================================================
+
+def term_to_dict(t) -> Optional[Dict[str, Any]]:
+    if not t:
+        return None
+    try:
+        return {
+            "id": t.id,
+            "name": getattr(t, "name", ""),
+            "academic_year": getattr(t, "academic_year", ""),
+            "semester": getattr(t, "semester", None),
+            "start_date": _format_dt(getattr(t, "start_date", None)),
+            "end_date": _format_dt(getattr(t, "end_date", None)),
+            "week_count": getattr(t, "week_count", 0),
+            "is_current": getattr(t, "is_current", False),
+            "status": getattr(t, "status", 1),
+            "remark": getattr(t, "remark", ""),
+            "created_at": _format_dt(getattr(t, "created_at", None)),
+        }
+    except Exception:
+        return {"id": getattr(t, "id", None), "name": getattr(t, "name", "")}
+
+
+def classroom_to_dict(c) -> Optional[Dict[str, Any]]:
+    if not c:
+        return None
+    try:
+        return {
+            "id": c.id,
+            "name": getattr(c, "name", ""),
+            "building": getattr(c, "building", ""),
+            "room_no": getattr(c, "room_no", ""),
+            "campus": getattr(c, "campus", ""),
+            "capacity": getattr(c, "capacity", 0),
+            "room_type": getattr(c, "room_type", ""),
+            "status": getattr(c, "status", 1),
+            "remark": getattr(c, "remark", ""),
+            "created_at": _format_dt(getattr(c, "created_at", None)),
+        }
+    except Exception:
+        return {"id": getattr(c, "id", None), "name": getattr(c, "name", "")}
+
+
+def course_schedule_to_dict(s) -> Optional[Dict[str, Any]]:
+    if not s:
+        return None
+    try:
+        term = getattr(s, "term", None)
+        course = getattr(s, "course", None)
+        clazz = getattr(s, "clazz", None)
+        teacher = getattr(s, "teacher", None)
+        classroom = getattr(s, "classroom", None)
+        return {
+            "id": s.id,
+            "term_id": getattr(s, "term_id", None),
+            "term_name": getattr(term, "name", "") if term else "",
+            "course_id": getattr(s, "course_id", None),
+            "course_name": getattr(course, "name", "") if course else "",
+            "course_code": getattr(course, "code", "") if course else "",
+            "clazz_id": getattr(s, "clazz_id", None),
+            "clazz_name": getattr(clazz, "name", "") if clazz else "",
+            "teacher_id": getattr(s, "teacher_id", None),
+            "teacher_name": getattr(teacher, "name", "") if teacher else "",
+            "classroom_id": getattr(s, "classroom_id", None),
+            "classroom_name": getattr(classroom, "name", "") if classroom else "",
+            "weekday": getattr(s, "weekday", None),
+            "start_section": getattr(s, "start_section", None),
+            "end_section": getattr(s, "end_section", None),
+            "start_week": getattr(s, "start_week", None),
+            "end_week": getattr(s, "end_week", None),
+            "week_type": getattr(s, "week_type", ""),
+            "schedule_type": getattr(s, "schedule_type", ""),
+            "status": getattr(s, "status", 1),
+            "remark": getattr(s, "remark", ""),
+            "created_at": _format_dt(getattr(s, "created_at", None)),
+        }
+    except Exception:
+        return {"id": getattr(s, "id", None)}
 
 
 # ============================================================

@@ -18,7 +18,7 @@
       <el-table :data="list" @row-click="openDetail" style="width: 100%" empty-text="暂无邮件">
         <el-table-column width="50" label="">
           <template #default="{ row }">
-            <el-icon v-if="!row.is_read" :size="10" color="#409eff" aria-label="未读"><Circle /></el-icon>
+            <span v-if="!row.is_read" class="unread-dot" aria-label="未读"></span>
           </template>
         </el-table-column>
         <el-table-column label="发件人" prop="sender_name" width="180" />
@@ -156,6 +156,15 @@ onMounted(loadList)
 }
 
 .pagination { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+.unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #409eff;
+  vertical-align: middle;
+}
 
 .detail-meta {
   display: flex; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #ebeef5;

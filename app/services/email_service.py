@@ -317,21 +317,22 @@ def search_users(keyword: str, current_user: User, db: Session, limit: int = 10)
     - 按用户名/真实姓名/邮箱匹配
     - 必须有邮箱字段才能作为结果返回
     """
-    if not keyword:
-        return []
+    keyword = (keyword or "").strip()
 
-    keyword = keyword.strip()
-    like = f"%{keyword}%"
-
-    users = db.query(User).filter(
+    query = db.query(User).filter(
         User.is_deleted == False,
         User.email != None,
         User.email != "",
-    ).filter(
-        (User.username.like(like)) |
-        (User.real_name.like(like)) |
-        (User.email.like(like))
-    ).limit(limit).all()
+    )
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.filter(
+            (User.username.like(like)) |
+            (User.real_name.like(like)) |
+            (User.email.like(like))
+        )
+
+    users = query.order_by(User.username.asc()).limit(limit + 1).all()
 
     result = []
     for u in users:
@@ -343,6 +344,8 @@ def search_users(keyword: str, current_user: User, db: Session, limit: int = 10)
             "real_name": u.real_name,
             "email": u.email,
         })
+        if len(result) >= limit:
+            break
 
     return result
 

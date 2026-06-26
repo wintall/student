@@ -9,7 +9,7 @@
           <el-option v-for="d in deptOptions" :key="d.id" :label="d.name" :value="d.id" />
         </el-select>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增教职工</el-button>
+        <el-button v-permission="'people:teacher:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增教职工</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -24,12 +24,12 @@
           <template #default="{ row }">{{ row.department?.name || '-' }}</template>
         </el-table-column>
         <el-table-column label="职务" width="100">
-          <template #default="{ row }">{{ ['教师','系主任','院长','副校长'][row.position] || '-' }}</template>
+          <template #default="{ row }">{{ formatPosition(row.position) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'people:teacher:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('people:teacher:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -97,6 +97,9 @@
             <el-option v-for="d in deptOptions" :key="d.id" :label="d.name" :value="d.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="身份证号" prop="id_card">
+          <el-input v-model="form.id_card" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -110,6 +113,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { teacherApi, departmentApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -119,17 +123,24 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const deptOptions = ref<any[]>([])
 const editId = ref(0)
+const canManage = hasPermission(['people:teacher:update', 'people:teacher:delete'])
 
 const query = reactive({ page: 1, page_size: 10, keyword: '', department_id: undefined as number | undefined })
 
 const form = reactive({
   name: '', employee_no: '', gender: 1, phone: '', email: '',
-  department_id: null as number | null, position: 0,
+  department_id: null as number | null, position: 0, id_card: '',
 })
 const rules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   employee_no: [{ required: true, message: '请输入工号', trigger: 'blur' }],
   department_id: [{ required: true, message: '请选择院系', trigger: 'change' }],
+  id_card: [{ required: true, message: '请输入身份证号', trigger: 'blur' }],
+}
+
+function formatPosition(position: any) {
+  if (typeof position === 'number') return ['教师', '系主任', '院长', '副校长'][position] || '-'
+  return position || '-'
 }
 
 async function fetchData() {
@@ -153,6 +164,7 @@ function openDialog(row?: any) {
     name: row?.name || '', employee_no: row?.employee_no || '',
     gender: row?.gender ?? 1, phone: row?.phone || '', email: row?.email || '',
     department_id: row?.department_id || null, position: row?.position ?? 0,
+    id_card: row?.id_card || '',
   })
   dialogVisible.value = true
 }

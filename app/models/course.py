@@ -27,3 +27,4 @@ class Course(SoftDeleteMixin, Base):
     student_courses = relationship("StudentCourse", back_populates="course")
     exams = relationship("Exam", back_populates="course")
     scores = relationship("Score", back_populates="course")
+    schedules = relationship("CourseSchedule", back_populates="course")

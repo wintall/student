@@ -21,11 +21,13 @@ class User(SoftDeleteMixin, Base):
     status = Column(SmallInteger, default=1, nullable=False, comment="1=正常 0=禁用")
     must_change_password = Column(Boolean, default=True, nullable=False, comment="首次登录强制改密")
     last_login_at = Column(DateTime, nullable=True, comment="最后登录时间")
+    has_face_template = Column(Boolean, default=False, nullable=False, comment="是否已录入人脸")
 
     # relationships
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     teacher = relationship("Teacher", back_populates="user", uselist=False)
     student = relationship("Student", back_populates="user", uselist=False)
+    face_template = relationship("FaceTemplate", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
 class Role(TimestampMixin, Base):

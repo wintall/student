@@ -27,7 +27,11 @@ def seed_roles(db):
     """创建预设角色"""
     roles_data = [
         {"code": "admin", "name": "系统管理员", "description": "拥有全部权限"},
-        {"code": "staff", "name": "教职工", "description": "教职工角色（校长/主任/班主任/教师）"},
+        {"code": "academic_admin", "name": "教务管理员", "description": "负责基础档案、教学计划、考试与成绩的教务管理"},
+        {"code": "department_admin", "name": "院系管理员", "description": "负责本院系班级、师生、课程、考试与成绩管理"},
+        {"code": "teacher", "name": "任课教师", "description": "负责所授课程、考试和成绩录入"},
+        {"code": "counselor", "name": "辅导员", "description": "负责班级学生日常信息维护与通知管理"},
+        {"code": "staff", "name": "教职工", "description": "兼容旧数据的教职工基础角色，仅保留只读入口"},
         {"code": "student", "name": "学生", "description": "学生角色"},
     ]
     roles = {}
@@ -39,6 +43,8 @@ def seed_roles(db):
             db.flush()
             print(f"  [新增] 角色: {rd['name']}")
         else:
+            role.name = rd["name"]
+            role.description = rd["description"]
             print(f"  [已有] 角色: {rd['name']}")
         roles[rd["code"]] = role
     return roles
@@ -70,6 +76,26 @@ def seed_admin(db, admin_role: Role):
         else:
             print(f"  [已有] 管理员账号: admin")
     return admin
+
+
+def assign_user_role(db, user: User, role: Role | None, replace_role_codes: set[str] | None = None):
+    """Assign a role idempotently, optionally replacing old seed roles."""
+    if not role:
+        return
+    if replace_role_codes:
+        old_roles = db.query(Role).filter(Role.code.in_(replace_role_codes)).all()
+        old_role_ids = [r.id for r in old_roles]
+        if old_role_ids:
+            db.query(UserRole).filter(
+                UserRole.user_id == user.id,
+                UserRole.role_id.in_(old_role_ids),
+            ).delete(synchronize_session=False)
+    exists = db.query(UserRole).filter(
+        UserRole.user_id == user.id,
+        UserRole.role_id == role.id,
+    ).first()
+    if not exists:
+        db.add(UserRole(user_id=user.id, role_id=role.id))
 
 
 def seed_menus(db, roles: dict):
@@ -158,6 +184,23 @@ def seed_menus(db, roles: dict):
                 {"name": "删除", "code": "announcement:delete", "type": 3, "sort_order": 3, "status": 1},
             ]},
         ]},
+        # 智能数据助手
+        {"name": "智能数据助手", "code": "nl-db", "type": 2, "path": "/nl-db", "icon": "database", "sort_order": 6, "status": 1, "children": [
+            {"name": "访问", "code": "nl-db:access", "type": 3, "sort_order": 1, "status": 1},
+        ]},
+        # 请假管理
+        {"name": "请假管理", "code": "leave", "type": 1, "path": "/leave", "icon": "calendar", "sort_order": 7, "status": 1, "children": [
+            {"name": "我的请假", "code": "leave:request", "type": 2, "path": "/leave/my", "icon": "edit", "sort_order": 1, "status": 1, "children": [
+                {"name": "查看", "code": "leave:request:list", "type": 3, "sort_order": 1, "status": 1},
+                {"name": "提交", "code": "leave:request:create", "type": 3, "sort_order": 2, "status": 1},
+                {"name": "撤销", "code": "leave:request:cancel", "type": 3, "sort_order": 3, "status": 1},
+            ]},
+            {"name": "请假审批", "code": "leave:review", "type": 2, "path": "/leave/review", "icon": "circle-check", "sort_order": 2, "status": 1, "children": [
+                {"name": "查看", "code": "leave:review:list", "type": 3, "sort_order": 1, "status": 1},
+                {"name": "通过", "code": "leave:review:approve", "type": 3, "sort_order": 2, "status": 1},
+                {"name": "驳回", "code": "leave:review:reject", "type": 3, "sort_order": 3, "status": 1},
+            ]},
+        ]},
     ]
 
     all_menu_ids = []
@@ -188,46 +231,94 @@ def seed_menus(db, roles: dict):
                 db.add(RoleMenu(role_id=admin_role.id, menu_id=mid))
         print(f"  [分配] admin 角色已分配 {len(all_menu_ids)} 个菜单权限")
 
-    # staff 角色分配查看类权限 + 公告发布
-    staff_role = roles.get("staff")
-    if staff_role:
-        staff_menu_codes = [
-            "org", "org:department", "org:department:list",
-            "org:clazz", "org:clazz:list", "org:clazz:create", "org:clazz:update", "org:clazz:delete",
-            "people", "people:teacher", "people:teacher:list",
-            "people:student", "people:student:list", "people:student:create", "people:student:update", "people:student:delete",
-            "teaching", "teaching:course", "teaching:course:list", "teaching:course:create", "teaching:course:update", "teaching:course:delete",
-            "teaching:exam", "teaching:exam:list", "teaching:exam:create", "teaching:exam:update", "teaching:exam:delete",
-            "teaching:score", "teaching:score:list", "teaching:score:create", "teaching:score:update",
-            "announcement", "announcement:list", "announcement:list:view",
-            "announcement:create", "announcement:publish", "announcement:update", "announcement:delete",
-        ]
-        staff_menus = db.query(Menu).filter(Menu.code.in_(staff_menu_codes)).all()
-        existing_ids = {rm.menu_id for rm in db.query(RoleMenu).filter(RoleMenu.role_id == staff_role.id).all()}
-        for m in staff_menus:
-            if m.id not in existing_ids:
-                db.add(RoleMenu(role_id=staff_role.id, menu_id=m.id))
-        print(f"  [分配] staff 角色已分配 {len(staff_menus)} 个菜单权限")
+    def _sync_role_menus(role_code: str, menu_codes: list[str]):
+        role = roles.get(role_code)
+        if not role:
+            return
 
-    # student 角色分配查看类权限
-    student_role = roles.get("student")
-    if student_role:
-        student_menu_codes = [
-            "org", "org:department", "org:department:list",
-            "org:clazz", "org:clazz:list",
-            "people", "people:teacher", "people:teacher:list",
-            "people:student", "people:student:list",
-            "teaching", "teaching:course", "teaching:course:list",
-            "teaching:exam", "teaching:exam:list",
-            "teaching:score", "teaching:score:list",
-            "announcement", "announcement:list", "announcement:list:view",
-        ]
-        student_menus = db.query(Menu).filter(Menu.code.in_(student_menu_codes)).all()
-        existing_ids = {rm.menu_id for rm in db.query(RoleMenu).filter(RoleMenu.role_id == student_role.id).all()}
-        for m in student_menus:
-            if m.id not in existing_ids:
-                db.add(RoleMenu(role_id=student_role.id, menu_id=m.id))
-        print(f"  [分配] student 角色已分配 {len(student_menus)} 个菜单权限")
+        menus = db.query(Menu).filter(Menu.code.in_(menu_codes)).all()
+        db.query(RoleMenu).filter(RoleMenu.role_id == role.id).delete()
+        for menu in menus:
+            db.add(RoleMenu(role_id=role.id, menu_id=menu.id))
+        from app.core.permissions import clear_user_cache
+        user_ids = [ur.user_id for ur in db.query(UserRole).filter(UserRole.role_id == role.id).all()]
+        for user_id in user_ids:
+            clear_user_cache(user_id)
+        print(f"  [分配] {role_code} 角色已同步 {len(menus)} 个菜单权限")
+
+    # 教务管理员：维护全校基础档案和教学业务，不管理系统角色/菜单。
+    _sync_role_menus("academic_admin", [
+        "org", "org:department", "org:department:list", "org:department:create", "org:department:update",
+        "org:clazz", "org:clazz:list", "org:clazz:create", "org:clazz:update",
+        "people", "people:teacher", "people:teacher:list", "people:teacher:create", "people:teacher:update",
+        "people:student", "people:student:list", "people:student:create", "people:student:update",
+        "teaching", "teaching:course", "teaching:course:list", "teaching:course:create", "teaching:course:update",
+        "teaching:exam", "teaching:exam:list", "teaching:exam:create", "teaching:exam:update",
+        "teaching:score", "teaching:score:list", "teaching:score:create", "teaching:score:update",
+        "announcement", "announcement:list", "announcement:list:view", "announcement:create", "announcement:publish", "announcement:update",
+        "nl-db", "nl-db:access",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+    ])
+
+    # 院系管理员：维护本院系组织与教学数据；当前菜单未做数据范围区分，先不给删除权限。
+    _sync_role_menus("department_admin", [
+        "org", "org:department", "org:department:list",
+        "org:clazz", "org:clazz:list", "org:clazz:create", "org:clazz:update",
+        "people", "people:teacher", "people:teacher:list", "people:teacher:update",
+        "people:student", "people:student:list", "people:student:create", "people:student:update",
+        "teaching", "teaching:course", "teaching:course:list", "teaching:course:create", "teaching:course:update",
+        "teaching:exam", "teaching:exam:list", "teaching:exam:create", "teaching:exam:update",
+        "teaching:score", "teaching:score:list", "teaching:score:create", "teaching:score:update",
+        "announcement", "announcement:list", "announcement:list:view", "announcement:create", "announcement:publish",
+        "nl-db", "nl-db:access",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+        "leave:review", "leave:review:list", "leave:review:approve", "leave:review:reject",
+    ])
+
+    # 任课教师：查看组织/学生基础信息，维护课程考试成绩，不维护人员档案。
+    _sync_role_menus("teacher", [
+        "org", "org:department", "org:department:list", "org:clazz", "org:clazz:list",
+        "people", "people:student", "people:student:list",
+        "teaching", "teaching:course", "teaching:course:list",
+        "teaching:exam", "teaching:exam:list", "teaching:exam:create", "teaching:exam:update",
+        "teaching:score", "teaching:score:list", "teaching:score:create", "teaching:score:update",
+        "announcement", "announcement:list", "announcement:list:view",
+        "nl-db", "nl-db:access",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+    ])
+
+    # 辅导员：维护班级学生信息，查看教学和成绩，不直接录入成绩。
+    _sync_role_menus("counselor", [
+        "org", "org:department", "org:department:list", "org:clazz", "org:clazz:list", "org:clazz:update",
+        "people", "people:teacher", "people:teacher:list",
+        "people:student", "people:student:list", "people:student:create", "people:student:update",
+        "teaching", "teaching:course", "teaching:course:list", "teaching:exam", "teaching:exam:list",
+        "teaching:score", "teaching:score:list",
+        "announcement", "announcement:list", "announcement:list:view", "announcement:create", "announcement:publish",
+        "nl-db", "nl-db:access",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+        "leave:review", "leave:review:list", "leave:review:approve", "leave:review:reject",
+    ])
+
+    # 兼容旧 staff：只读教学/组织/公告入口，避免旧账号继续拥有过宽修改权。
+    _sync_role_menus("staff", [
+        "org", "org:department", "org:department:list", "org:clazz", "org:clazz:list",
+        "people", "people:teacher", "people:teacher:list", "people:student", "people:student:list",
+        "teaching", "teaching:course", "teaching:course:list", "teaching:exam", "teaching:exam:list",
+        "teaching:score", "teaching:score:list",
+        "announcement", "announcement:list", "announcement:list:view",
+        "nl-db", "nl-db:access",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+    ])
+
+    # 学生：只保留公告、课程/考试/成绩查询入口；不开放全校学生/教师列表。
+    _sync_role_menus("student", [
+        "teaching", "teaching:course", "teaching:course:list",
+        "teaching:exam", "teaching:exam:list",
+        "teaching:score", "teaching:score:list",
+        "announcement", "announcement:list", "announcement:list:view",
+        "leave", "leave:request", "leave:request:list", "leave:request:create", "leave:request:cancel",
+    ])
 
 
 def seed_sample_data(db, roles: dict):
@@ -281,7 +372,9 @@ def seed_sample_data(db, roles: dict):
         clazzes[cd["code"]] = clazz
 
     # ============ 教职工 ============
-    staff_role = roles.get("staff")
+    teacher_role = roles.get("teacher")
+    counselor_role = roles.get("counselor")
+    department_admin_role = roles.get("department_admin")
     teachers_data = [
         {"username": "teacher01", "real_name": "张伟", "phone": "13800000001",
          "employee_no": "T2022001", "name": "张伟", "gender": 1, "id_card": "110101198001011234",
@@ -334,8 +427,12 @@ def seed_sample_data(db, roles: dict):
             )
             db.add(user)
             db.flush()
-            if staff_role:
-                db.add(UserRole(user_id=user.id, role_id=staff_role.id))
+            role = teacher_role
+            if "主任" in td["position"]:
+                role = department_admin_role
+            elif td["username"] == "teacher04":
+                role = counselor_role
+            assign_user_role(db, user, role, {"staff", "teacher", "counselor", "department_admin"})
             teacher = Teacher(
                 user_id=user.id,
                 employee_no=td["employee_no"],
@@ -352,6 +449,17 @@ def seed_sample_data(db, roles: dict):
             db.flush()
             print(f"  [新增] 教职工: {td['name']} ({td['username']})")
             teachers_map[td["username"]] = teacher
+        else:
+            # 用户已存在，从数据库获取教师信息
+            role = teacher_role
+            if "主任" in td["position"]:
+                role = department_admin_role
+            elif td["username"] == "teacher04":
+                role = counselor_role
+            assign_user_role(db, user, role, {"staff", "teacher", "counselor", "department_admin"})
+            teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+            if teacher:
+                teachers_map[td["username"]] = teacher
 
     # ============ 学生 ============
     student_role = roles.get("student")

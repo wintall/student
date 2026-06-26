@@ -14,7 +14,21 @@
         <p class="subtitle">Student Information Management System</p>
       </div>
 
+      <div class="login-tabs">
+        <span 
+          class="tab-item" 
+          :class="{ active: loginMode === 'password' }"
+          @click="loginMode = 'password'"
+        >密码登录</span>
+        <span 
+          class="tab-item" 
+          :class="{ active: loginMode === 'face' }"
+          @click="loginMode = 'face'"
+        >人脸登录</span>
+      </div>
+
       <el-form
+        v-if="loginMode === 'password'"
         ref="formRef"
         :model="form"
         :rules="rules"
@@ -54,6 +68,12 @@
           </el-button>
         </el-form-item>
       </el-form>
+
+      <FaceLogin 
+        v-else 
+        @login-success="handleFaceLoginSuccess" 
+        @close="loginMode = 'password'" 
+      />
 
       <div class="login-footer">
         <span>管理员: admin / admin123</span>
@@ -116,11 +136,14 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User, Lock, School } from '@element-plus/icons-vue'
 import { login, sendResetCode, resetPassword } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
+import FaceLogin from '@/components/FaceLogin.vue'
+import { getCurrentLocation, getCityByLocation } from '@/utils/geolocation'
 
 const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const loginMode = ref<'password' | 'face'>('password')
 
 const form = reactive({
   account: '',
@@ -164,14 +187,39 @@ async function handleLogin() {
       console.warn('菜单加载失败')
     }
 
-    // 5. 跳转首页
+    // 5. 获取地理位置（最多等待3秒）
+    fetchLocationAndWeather()
+
+    // 6. 跳转首页
     ElMessage.success('登录成功，欢迎回来！')
     router.push('/dashboard')
   } catch (e: any) {
-    // 拦截器已经显示过错误信息了，这里只负责中断流程
     console.error('登录出错:', e)
   } finally {
     loading.value = false
+  }
+}
+
+const handleFaceLoginSuccess = async () => {
+  fetchLocationAndWeather()
+  ElMessage.success('登录成功，欢迎回来！')
+  router.push('/dashboard')
+}
+
+async function fetchLocationAndWeather() {
+  try {
+    const location = await getCurrentLocation(3000)
+    if (location.latitude && location.longitude) {
+      const city = await getCityByLocation(location.latitude, location.longitude)
+      if (city) {
+        sessionStorage.setItem('weather_city', city.replace('市', ''))
+        console.log('获取地理位置成功:', city)
+      }
+    } else if (location.error) {
+      console.log('地理位置获取失败:', location.error)
+    }
+  } catch (e) {
+    console.log('获取地理位置失败，将使用IP定位')
   }
 }
 
@@ -361,6 +409,34 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 8px 0;
+}
+
+.login-tabs {
+  display: flex;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #6b7280;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-item:hover {
+  color: #409eff;
+}
+
+.tab-item.active {
+  color: #409eff;
+  border-bottom-color: #409eff;
+  font-weight: 600;
 }
 
 .subtitle {

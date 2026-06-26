@@ -6,7 +6,7 @@
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增课程</el-button>
+        <el-button v-permission="'teaching:course:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增课程</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -23,10 +23,10 @@
             <el-tag size="small">{{ row.course_type === 1 ? '必修' : '选修' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'teaching:course:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('teaching:course:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -87,6 +87,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { courseApi, teacherApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -96,6 +97,7 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const teacherOptions = ref<any[]>([])
 const editId = ref(0)
+const canManage = hasPermission(['teaching:course:update', 'teaching:course:delete'])
 
 const query = reactive({ page: 1, page_size: 10, keyword: '' })
 

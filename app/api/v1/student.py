@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.deps import get_db, get_current_user
+from app.deps import get_db, require_permission
 from app.models.user import User
 from app.services import student_service
 from app.schemas.student import StudentCreate, StudentUpdate
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/students", tags=["学生管理"])
 
 
 @router.post("")
-def create(body: StudentCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create(body: StudentCreate, db: Session = Depends(get_db), _: User = Depends(require_permission("people:student:create"))):
     s = student_service.create_student(body, db)
     return success(data={"id": s.id})
 
@@ -29,7 +29,7 @@ def list_all(
     keyword: str = Query(None),
     clazz_id: int = Query(None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission("people:student:list")),
 ):
     params = PageParams(page=page, page_size=page_size, keyword=keyword)
     q = student_service.list_students(params, db, clazz_id)
@@ -40,18 +40,18 @@ def list_all(
 
 
 @router.get("/{student_id}")
-def get(student_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get(student_id: int, db: Session = Depends(get_db), _: User = Depends(require_permission("people:student:list"))):
     s = student_service.get_student(student_id, db)
     return success(data=student_to_dict(s))
 
 
 @router.put("/{student_id}")
-def update(student_id: int, body: StudentUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def update(student_id: int, body: StudentUpdate, db: Session = Depends(get_db), _: User = Depends(require_permission("people:student:update"))):
     s = student_service.update_student(student_id, body, db)
     return success(data={"id": s.id})
 
 
 @router.delete("/{student_id}")
-def delete(student_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def delete(student_id: int, db: Session = Depends(get_db), _: User = Depends(require_permission("people:student:delete"))):
     student_service.delete_student(student_id, db)
     return success(message="删除成功")

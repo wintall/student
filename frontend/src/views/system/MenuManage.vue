@@ -18,7 +18,7 @@
         <el-table-column prop="name" label="菜单标题" min-width="180" />
         <el-table-column prop="type" label="类型" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.type === 1 ? '' : row.type === 2 ? 'warning' : 'info'" size="small">
+            <el-tag :type="row.type === 1 ? 'primary' : row.type === 2 ? 'warning' : 'info'" size="small">
               {{ row.type === 1 ? '目录' : row.type === 2 ? '菜单' : '按钮' }}
             </el-tag>
           </template>

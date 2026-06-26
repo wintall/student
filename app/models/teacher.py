@@ -29,6 +29,7 @@ class Teacher(SoftDeleteMixin, Base):
     teacher_clazzes = relationship("TeacherClazz", back_populates="teacher", cascade="all, delete-orphan")
     courses = relationship("Course", back_populates="teacher")
     scores = relationship("Score", back_populates="scorer")
+    schedules = relationship("CourseSchedule", back_populates="teacher")
 
 
 class TeacherClazz(TimestampMixin, Base):

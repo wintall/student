@@ -7,13 +7,15 @@ from pydantic import BaseModel, Field
 
 
 class StudentCreate(BaseModel):
-    user_id: int = Field(..., description="关联用户ID")
+    user_id: Optional[int] = Field(default=None, description="关联用户ID")
     student_no: str = Field(..., max_length=30, description="学号")
     name: str = Field(..., max_length=50, description="姓名")
     gender: int = Field(..., description="1=男 2=女")
     id_card: str = Field(..., max_length=18, description="身份证号")
     clazz_id: int = Field(..., description="所属班级ID")
     enrollment_date: Optional[date] = Field(default=None, description="入学日期")
+    phone: Optional[str] = Field(default=None, max_length=20)
+    email: Optional[str] = Field(default=None, max_length=100)
     status: int = Field(default=1)
 
 
@@ -24,6 +26,8 @@ class StudentUpdate(BaseModel):
     id_card: Optional[str] = Field(default=None, max_length=18)
     clazz_id: Optional[int] = None
     enrollment_date: Optional[date] = None
+    phone: Optional[str] = Field(default=None, max_length=20)
+    email: Optional[str] = Field(default=None, max_length=100)
     status: Optional[int] = None
 
 

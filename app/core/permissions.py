@@ -13,6 +13,14 @@ from app.models.user import User, Role, Menu, UserRole, RoleMenu
 from app.redis import redis_get, redis_set
 
 
+def get_user_role_codes(user: User, db: Session) -> Set[str]:
+    """Return role codes assigned to a user."""
+    roles = db.query(Role.code).join(UserRole, UserRole.role_id == Role.id).filter(
+        UserRole.user_id == user.id
+    ).all()
+    return {row[0] for row in roles}
+
+
 def get_user_permission_codes(user: User, db: Session) -> Set[str]:
     """
     获取用户的所有权限代码集合
@@ -21,11 +29,7 @@ def get_user_permission_codes(user: User, db: Session) -> Set[str]:
     :return: 权限代码集合，如 {"student:list", "student:create", ...}
     """
     # 1. 检查是否是 admin（直接放行）
-    user_roles = db.query(Role).join(UserRole, UserRole.role_id == Role.id).filter(
-        UserRole.user_id == user.id
-    ).all()
-
-    role_codes = {r.code for r in user_roles}
+    role_codes = get_user_role_codes(user, db)
     if "admin" in role_codes:
         return {"*"}  # 超级管理员拥有全部权限
 
@@ -97,7 +101,7 @@ def get_user_menu_tree(user: User, db: Session) -> List[dict]:
         try:
             cached = redis_get(cache_key)
             if cached:
-                return json.loads(cached)
+                return _build_tree(json.loads(cached))
         except Exception:
             pass
 

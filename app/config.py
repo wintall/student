@@ -84,10 +84,14 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
     DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_API_KEY_V4: str = ""
+    DEEPSEEK_API_URL_V4: str = "https://api.deepseek.com/v1/chat/completions"
+    DEEPSEEK_MODEL_V4: str = "deepseek-v4-flash"
 
-    # ---- 百度地图 ----
-    BAIDU_MAP_KEY: str = ""
-    BAIDU_MAP_IP_URL: str = "https://api.map.baidu.com/location/ip"
+    # ---- 高德地图 ----
+    AMAP_KEY: str = "436cc97cb02b3067da8f31c938b1b56a"
+    AMAP_IP_LOCATION_URL: str = "https://restapi.amap.com/v3/ip"
+    AMAP_WEATHER_URL: str = "https://restapi.amap.com/v3/weather/weatherInfo"
 
     # ---- 文件上传 ----
     UPLOAD_DIR: str = "uploads"
@@ -122,6 +126,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
+        "extra": "ignore",
     }
 
 

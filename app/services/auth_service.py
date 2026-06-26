@@ -60,6 +60,7 @@ def login(account: str, password: str, ip: str, db: Session) -> dict:
         pass
 
     # 8. 获取用户角色
+    from app.core.permissions import get_user_permission_codes
     from app.models.user import UserRole, Role
     user_roles = (
         db.query(Role)
@@ -72,6 +73,7 @@ def login(account: str, password: str, ip: str, db: Session) -> dict:
         for r in user_roles
     ]
     is_admin = any(r.code == "admin" for r in user_roles)
+    permissions = sorted(get_user_permission_codes(user, db))
 
     return {
         "access_token": access_token,
@@ -85,6 +87,7 @@ def login(account: str, password: str, ip: str, db: Session) -> dict:
             "email": user.email,
             "roles": role_list,
             "is_admin": is_admin,
+            "permissions": permissions,
         },
     }
 

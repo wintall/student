@@ -13,7 +13,7 @@
           active-text-color="#409eff"
         >
           <el-menu-item index="/email/inbox">
-            <el-icon><Inbox /></el-icon>
+            <el-icon><Message /></el-icon>
             <span>收件箱</span>
             <el-badge v-if="unreadCount > 0" :value="unreadCount" class="ml-auto" style="margin-left: auto;" />
           </el-menu-item>

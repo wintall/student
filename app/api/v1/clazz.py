@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.deps import get_db, get_current_user
+from app.deps import get_db, require_permission
 from app.models.user import User
 from app.services import clazz_service
 from app.schemas.clazz import ClazzCreate, ClazzUpdate
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/clazzes", tags=["班级管理"])
 
 
 @router.post("")
-def create(body: ClazzCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create(body: ClazzCreate, db: Session = Depends(get_db), _: User = Depends(require_permission("org:clazz:create"))):
     clazz = clazz_service.create_clazz(body, db)
     return success(data={"id": clazz.id})
 
@@ -29,7 +29,7 @@ def list_all(
     keyword: str = Query(None),
     department_id: int = Query(None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission("org:clazz:list")),
 ):
     params = PageParams(page=page, page_size=page_size, keyword=keyword)
     q = clazz_service.list_clazzes(params, db, department_id)
@@ -39,18 +39,18 @@ def list_all(
 
 
 @router.get("/{clazz_id}")
-def get(clazz_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get(clazz_id: int, db: Session = Depends(get_db), _: User = Depends(require_permission("org:clazz:list"))):
     clazz = clazz_service.get_clazz(clazz_id, db)
     return success(data=clazz_to_dict(clazz))
 
 
 @router.put("/{clazz_id}")
-def update(clazz_id: int, body: ClazzUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def update(clazz_id: int, body: ClazzUpdate, db: Session = Depends(get_db), _: User = Depends(require_permission("org:clazz:update"))):
     clazz = clazz_service.update_clazz(clazz_id, body, db)
     return success(data={"id": clazz.id})
 
 
 @router.delete("/{clazz_id}")
-def delete(clazz_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def delete(clazz_id: int, db: Session = Depends(get_db), _: User = Depends(require_permission("org:clazz:delete"))):
     clazz_service.delete_clazz(clazz_id, db)
     return success(message="删除成功")

@@ -7,6 +7,7 @@ import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
 import './styles/global.css'
+import { hasPermission } from './utils/permission'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -19,4 +20,18 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
+
+app.directive('permission', {
+  mounted(el, binding) {
+    if (!hasPermission(binding.value)) {
+      el.parentNode?.removeChild(el)
+    }
+  },
+  updated(el, binding) {
+    if (!hasPermission(binding.value)) {
+      el.parentNode?.removeChild(el)
+    }
+  },
+})
+
 app.mount('#app')

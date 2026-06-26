@@ -6,7 +6,7 @@
           <el-option v-for="c in courseOptions" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增考试</el-button>
+        <el-button v-permission="'teaching:exam:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增考试</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -29,10 +29,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'teaching:exam:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('teaching:exam:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -96,6 +96,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { examApi, courseApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -105,6 +106,7 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const courseOptions = ref<any[]>([])
 const editId = ref(0)
+const canManage = hasPermission(['teaching:exam:update', 'teaching:exam:delete'])
 
 const query = reactive({ page: 1, page_size: 10, course_id: undefined as number | undefined })
 

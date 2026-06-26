@@ -11,7 +11,7 @@ from app.schemas.auth import (
     SendResetCodeRequest, ResetPasswordRequest,
 )
 from app.services import auth_service
-from app.core.permissions import get_user_menu_tree
+from app.core.permissions import get_user_menu_tree, get_user_permission_codes
 from app.utils.response import success
 
 router = APIRouter(prefix="/auth", tags=["认证"])
@@ -64,6 +64,7 @@ def get_current_user_info(
         for r in user_roles
     ]
     is_admin = any(r.code == "admin" for r in user_roles)
+    permissions = sorted(get_user_permission_codes(user, db))
     return success(data={
         "id": user.id,
         "username": user.username,
@@ -72,6 +73,7 @@ def get_current_user_info(
         "email": user.email,
         "roles": role_list,
         "is_admin": is_admin,
+        "permissions": permissions,
     })
 
 

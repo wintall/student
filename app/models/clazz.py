@@ -24,3 +24,4 @@ class Clazz(SoftDeleteMixin, Base):
     students = relationship("Student", back_populates="clazz")
     teacher_clazzes = relationship("TeacherClazz", back_populates="clazz", cascade="all, delete-orphan")
     exams = relationship("Exam", back_populates="clazz")
+    schedules = relationship("CourseSchedule", back_populates="clazz")

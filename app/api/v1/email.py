@@ -121,8 +121,8 @@ def delete_email(
 
 @router.get("/users/suggest")
 def suggest_users(
-    keyword: str = Query(..., min_length=1, description="搜索关键词"),
-    limit: int = Query(10, ge=1, le=50),
+    keyword: str = Query("", description="搜索关键词"),
+    limit: int = Query(20, ge=1, le=50),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

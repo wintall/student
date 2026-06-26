@@ -14,6 +14,8 @@
             clearable
             style="width: 100%"
             value-key="email"
+            :trigger-on-focus="true"
+            @select="handleRecipientSelect"
           >
             <template #default="{ item }">
               <div class="suggestion-item">
@@ -101,25 +103,25 @@ const sending = ref(false)
 const dragOver = ref(false)
 
 async function fetchSuggestions(keyword: string, cb: (list: any[]) => void) {
-  if (!keyword || keyword.length < 1) {
-    cb([])
-    return
-  }
   try {
     const res = await suggestUsers(keyword)
     const users = res.data?.items || res.data || []
     cb(
       users.map((u: any) => ({
         email: u.email,
-        name: u.name || u.username || u.email,
+        name: u.real_name || u.name || u.username || u.email,
         role: u.role || u.role_name || '',
         // el-autocomplete 需要 value 字段
-        value: `${u.name || u.username || ''} (${u.email})`,
+        value: u.email,
       }))
     )
   } catch (e) {
     cb([])
   }
+}
+
+function handleRecipientSelect(item: any) {
+  form.recipient_email = item.email || item.value || ''
 }
 
 function handleFileChange(uploadFile: UploadFile) {

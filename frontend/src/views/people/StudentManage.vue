@@ -9,7 +9,7 @@
           <el-option v-for="c in clazzOptions" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
         <el-button type="primary" @click="fetchData"><el-icon><Search /></el-icon> 搜索</el-button>
-        <el-button type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增学生</el-button>
+        <el-button v-permission="'people:student:create'" type="success" @click="openDialog()"><el-icon><Plus /></el-icon> 新增学生</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
@@ -26,10 +26,10 @@
         <el-table-column label="入学年份" width="100">
           <template #default="{ row }">{{ row.enrollment_year }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="canManage" label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+            <el-button v-permission="'people:student:update'" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-popconfirm v-if="hasPermission('people:student:delete')" title="确定删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
@@ -108,6 +108,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { studentApi, clazzApi } from '@/api/common'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -117,6 +118,7 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const clazzOptions = ref<any[]>([])
 const editId = ref(0)
+const canManage = hasPermission(['people:student:update', 'people:student:delete'])
 
 const query = reactive({ page: 1, page_size: 10, keyword: '', clazz_id: undefined as number | undefined })
 
