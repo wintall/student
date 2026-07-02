@@ -28,6 +28,7 @@ from app.models.email import EmailMessage, EmailAttachment
 
 # RAG 对话
 from app.models.conversation import Conversation
+from app.models.agent import AgentLongTermMemory, AgentPendingAction, AgentTaskDraft
 
 # 人脸识别
 from app.models.face import FaceTemplate, FaceLoginLog
@@ -36,6 +37,7 @@ from app.models.face import FaceTemplate, FaceLoginLog
 from app.models.leave import LeaveRequest
 from app.models.attendance import AttendanceRecord
 from app.models.notification import Notification
+from app.models.rag_knowledge import RagKnowledgeBase, RagDocument, RagDocumentChunk
 
 __all__ = [
     "Base", "TimestampMixin", "SoftDeleteMixin",
@@ -46,8 +48,9 @@ __all__ = [
     "Exam", "Score",
     "Announcement", "AnnouncementRead",
     "EmailMessage", "EmailAttachment",
-    "Conversation",
+    "Conversation", "AgentPendingAction", "AgentTaskDraft", "AgentLongTermMemory",
     "FaceTemplate", "FaceLoginLog",
     "LeaveRequest", "AttendanceRecord",
     "Notification",
+    "RagKnowledgeBase", "RagDocument", "RagDocumentChunk",
 ]

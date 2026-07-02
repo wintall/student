@@ -1,0 +1,5 @@
+# Install this in a separate virtual environment for the standalone MCP search server.
+# The main FastAPI app pins Starlette/Uvicorn versions for FastAPI 0.115.x, while
+# the latest MCP runtime currently requires newer ASGI dependencies.
+mcp>=1.28.1
+tavily-python>=0.7.0

@@ -3,6 +3,8 @@
 """
 import os
 import uuid
+import sys
+import ctypes
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -19,6 +21,24 @@ from app.exceptions import BusinessException
 
 
 logger = logging.getLogger("app")
+
+
+def configure_console_encoding():
+    """Keep Windows console output readable for Chinese startup logs."""
+    if os.name == "nt":
+        try:
+            ctypes.windll.kernel32.SetConsoleCP(65001)
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        except Exception:
+            pass
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+configure_console_encoding()
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

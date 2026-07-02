@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.services.nl_db_agent import run_agent, clear_conversation, get_conversation_history, save_conversation_history
+from app.services.nl_db_tools import LEGACY_PERMISSION_MAP, check_permission
 from app.redis import redis_get, redis_set
 
 
@@ -683,6 +684,33 @@ def execute_tool_call(tool_name: str, tool_args: Dict[str, Any], user: User, db:
     if not handler:
         return {"success": False, "message": f"工具 {tool_name} 不存在", "data": None}
     
+    tool_permission_map = {
+        "create_student": "student:create",
+        "query_student": "student:query",
+        "update_student": "student:update",
+        "delete_student": "student:delete",
+        "create_teacher": "teacher:create",
+        "query_teacher": "teacher:query",
+        "update_teacher": "teacher:update",
+        "delete_teacher": "teacher:delete",
+        "create_clazz": "clazz:create",
+        "query_clazz": "clazz:query",
+        "update_clazz": "clazz:update",
+        "delete_clazz": "clazz:delete",
+        "create_course": "course:create",
+        "query_course": "course:query",
+        "update_course": "course:update",
+        "delete_course": "course:delete",
+    }
+    required_permission = tool_permission_map.get(tool_name)
+    if required_permission and not check_permission(user, db, required_permission):
+        rbac_code = LEGACY_PERMISSION_MAP.get(required_permission, required_permission)
+        return {
+            "success": False,
+            "message": f"无权执行该操作，所需权限：{rbac_code}",
+            "data": None,
+        }
+
     return handler(tool_args, user, db)
 
 

@@ -10,7 +10,8 @@ from typing import Any, Iterable
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.permissions import get_user_role_codes
+from app.core.permissions import get_user_role_codes, has_permission
+from app.exceptions import PermissionDenied
 from app.models.announcement import Announcement
 from app.models.clazz import Clazz
 from app.models.course import Course
@@ -30,6 +31,15 @@ ADMIN_ROLES = {"admin", "academic_admin"}
 DEPARTMENT_ROLES = {"department_admin", "staff_dean"}
 COUNSELOR_ROLES = {"counselor", "staff_counselor"}
 TEACHER_ROLES = {"teacher", "staff_teacher", "staff_affairs"}
+
+EXPORT_PERMISSION_MAP = {
+    "students": "operations:export:students",
+    "teachers": "operations:export:teachers",
+    "courses": "operations:export:courses",
+    "schedules": "operations:export:schedules",
+    "scores": "operations:export:scores",
+    "transcript": "operations:export:transcript",
+}
 
 
 def _role_codes(user: User, db: Session) -> set[str]:
@@ -379,6 +389,7 @@ def _csv_response(rows: list[dict[str, Any]], headers: list[tuple[str, str]]) ->
 
 def export_csv(export_type: str, user: User, db: Session, student_id: int | None = None) -> tuple[str, str]:
     scope = _scope(user, db)
+    _ensure_export_allowed(export_type, user, db, scope, student_id=student_id)
     if export_type == "students":
         rows = [
             {
@@ -398,6 +409,8 @@ def export_csv(export_type: str, user: User, db: Session, student_id: int | None
             q = q.filter(Teacher.department_id == scope["department_id"])
         elif scope["kind"] == "teacher":
             q = q.filter(Teacher.id == scope["teacher_id"])
+        elif scope["kind"] not in {"all"}:
+            q = q.filter(False)
         rows = [{"employee_no": t.employee_no, "name": t.name, "department": t.department.name if t.department else "", "position": t.position, "title": t.title} for t in q.all()]
         return "teachers.csv", _csv_response(rows, [("employee_no", "工号"), ("name", "姓名"), ("department", "院系"), ("position", "岗位"), ("title", "职称")])
 
@@ -448,3 +461,30 @@ def export_csv(export_type: str, user: User, db: Session, student_id: int | None
         return filename, _csv_response(rows, [("student_no", "学号"), ("student", "姓名"), ("course", "课程"), ("exam", "考试"), ("score", "分数"), ("grade", "等级"), ("rank", "班级排名")])
 
     raise ValueError("unsupported export type")
+
+
+def _ensure_export_allowed(
+    export_type: str,
+    user: User,
+    db: Session,
+    scope: dict[str, Any],
+    *,
+    student_id: int | None = None,
+) -> None:
+    required = EXPORT_PERMISSION_MAP.get(export_type)
+    if not required:
+        raise PermissionDenied("不支持的导出类型")
+
+    if has_permission(user, db, required):
+        if export_type == "transcript" and scope["kind"] == "student":
+            own_student_id = scope.get("student_id")
+            if student_id and int(student_id) != int(own_student_id or 0):
+                raise PermissionDenied("学生只能导出自己的成绩单")
+        return
+
+    if export_type == "transcript" and scope["kind"] == "student":
+        own_student_id = scope.get("student_id")
+        if not student_id or int(student_id) == int(own_student_id or 0):
+            return
+
+    raise PermissionDenied("无权导出该类数据")

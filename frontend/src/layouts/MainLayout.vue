@@ -27,6 +27,10 @@
             <el-icon><Reading /></el-icon>
             <template #title>名著问答</template>
           </el-menu-item>
+          <el-menu-item index="/rag/knowledge">
+            <el-icon><Collection /></el-icon>
+            <template #title>综合知识库</template>
+          </el-menu-item>
 
           <!-- 从后端加载的菜单 -->
           <template v-for="item in menuItems" :key="item.path || item.id">

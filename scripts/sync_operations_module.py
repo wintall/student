@@ -28,6 +28,12 @@ MENUS = [
         "children": [
             {"name": "数据体检", "code": "operations:health", "type": 2, "path": "/operations/health", "icon": "CircleCheck", "sort_order": 1, "status": 1},
             {"name": "数据导出", "code": "operations:export", "type": 2, "path": "/operations/export", "icon": "Download", "sort_order": 2, "status": 1},
+            {"name": "导出学生", "code": "operations:export:students", "type": 3, "path": None, "icon": None, "sort_order": 1, "status": 1},
+            {"name": "导出教师", "code": "operations:export:teachers", "type": 3, "path": None, "icon": None, "sort_order": 2, "status": 1},
+            {"name": "导出课程", "code": "operations:export:courses", "type": 3, "path": None, "icon": None, "sort_order": 3, "status": 1},
+            {"name": "导出课表", "code": "operations:export:schedules", "type": 3, "path": None, "icon": None, "sort_order": 4, "status": 1},
+            {"name": "导出成绩", "code": "operations:export:scores", "type": 3, "path": None, "icon": None, "sort_order": 5, "status": 1},
+            {"name": "导出成绩单", "code": "operations:export:transcript", "type": 3, "path": None, "icon": None, "sort_order": 6, "status": 1},
         ],
     },
     {
@@ -42,15 +48,15 @@ MENUS = [
 ]
 
 ROLE_MENU_CODES = {
-    "admin": ["operations", "operations:health", "operations:export", "notification"],
-    "academic_admin": ["operations", "operations:health", "operations:export", "notification"],
-    "department_admin": ["operations", "operations:health", "operations:export", "notification"],
-    "staff_dean": ["operations", "operations:health", "operations:export", "notification"],
+    "admin": ["operations", "operations:health", "operations:export", "operations:export:students", "operations:export:teachers", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
+    "academic_admin": ["operations", "operations:health", "operations:export", "operations:export:students", "operations:export:teachers", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
+    "department_admin": ["operations", "operations:health", "operations:export", "operations:export:students", "operations:export:teachers", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
+    "staff_dean": ["operations", "operations:health", "operations:export", "operations:export:students", "operations:export:teachers", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
     "counselor": ["operations", "operations:health", "notification"],
     "staff_counselor": ["operations", "operations:health", "notification"],
-    "teacher": ["operations", "operations:export", "notification"],
-    "staff_teacher": ["operations", "operations:export", "notification"],
-    "student": ["operations", "operations:export", "notification"],
+    "teacher": ["operations", "operations:export", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
+    "staff_teacher": ["operations", "operations:export", "operations:export:courses", "operations:export:schedules", "operations:export:scores", "operations:export:transcript", "notification"],
+    "student": ["operations", "operations:export", "operations:export:transcript", "notification"],
 }
 
 

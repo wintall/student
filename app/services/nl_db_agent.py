@@ -6,9 +6,11 @@ import json
 import re
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage, HumanMessage
+
+try:
+    from langchain_openai import ChatOpenAI
+except ModuleNotFoundError:
+    ChatOpenAI = None
 
 from app.models.user import User
 from app.config import settings
@@ -23,6 +25,9 @@ MEMORY_STORE = {}
 
 def get_llm():
     """获取LLM模型实例"""
+    if ChatOpenAI is None:
+        raise RuntimeError("旧版自然语言数据库助手缺少 langchain_openai 依赖，请使用足球助手或安装 LangChain 依赖。")
+
     api_key = settings.DEEPSEEK_API_KEY_V4 or settings.DEEPSEEK_API_KEY
     model = settings.DEEPSEEK_MODEL_V4 or settings.DEEPSEEK_MODEL
     api_base = settings.DEEPSEEK_API_URL_V4 if settings.DEEPSEEK_API_KEY_V4 else settings.DEEPSEEK_API_URL
@@ -289,6 +294,17 @@ def run_agent(user: User, message: str, db: Session) -> Dict[str, Any]:
         intent = previous_intent
         
         if intent == "unknown":
+            if ChatOpenAI is None:
+                reply = "我还没识别出这个旧版自然语言数据库请求。当前环境未安装 LangChain 依赖，建议使用右下角足球助手进行自然语言操作。"
+                save_conversation_history(user.id, history + [{"role": "user", "content": message}, {"role": "assistant", "content": reply}])
+                return {
+                    "success": True,
+                    "reply": reply,
+                    "tool_calls": [],
+                    "tool_results": [],
+                    "has_data": False,
+                }
+
             llm = get_llm()
             prompt = build_prompt_with_history(message, history, user, db)
             result = llm.invoke(prompt)

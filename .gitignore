@@ -65,3 +65,7 @@ email_attachments/
 *.tmp
 *.bak
 *.swp
+
+# Local demo/private assets
+文本/
+docs/Tech-Knowledge.zip

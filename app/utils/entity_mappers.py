@@ -262,6 +262,7 @@ def score_to_dict(sc) -> Optional[Dict[str, Any]]:
             "course_name": getattr(course, "name", "") if course else "",
             "score": float(getattr(sc, "score", 0)) if getattr(sc, "score", None) is not None else None,
             "grade": getattr(sc, "grade", ""),
+            "rank_in_class": getattr(sc, "rank_in_class", None),
             "scorer_id": getattr(sc, "scorer_id", None),
             "scorer_name": getattr(scorer, "name", "") if scorer else "",
             "created_at": _format_dt(getattr(sc, "created_at", None)),

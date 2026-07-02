@@ -19,6 +19,7 @@ from app.api.v1.email import router as email_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.rag import router as rag_router
 from app.api.v1.rag_qa import router as rag_qa_router
+from app.api.v1.rag_knowledge import router as rag_knowledge_router
 from app.api.v1.nl_db import router as nl_db_router
 from app.api.v1.face import router as face_router
 from app.api.v1.leave import router as leave_router
@@ -47,6 +48,7 @@ api_router.include_router(email_router)
 api_router.include_router(ai_router)
 api_router.include_router(rag_router)
 api_router.include_router(rag_qa_router)
+api_router.include_router(rag_knowledge_router)
 api_router.include_router(nl_db_router)
 api_router.include_router(leave_router)
 api_router.include_router(attendance_router)

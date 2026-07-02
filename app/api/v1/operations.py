@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db
+from app.deps import get_current_user, get_db, require_permission
 from app.models.user import User
 from app.services import operations_service
 from app.utils.response import success
@@ -33,7 +33,7 @@ def data_health(
 def export_data(
     export_type: str,
     student_id: int = Query(None),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_permission("operations:export")),
     db: Session = Depends(get_db),
 ):
     filename, content = operations_service.export_csv(export_type, user, db, student_id=student_id)

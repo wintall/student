@@ -18,12 +18,12 @@
         <span 
           class="tab-item" 
           :class="{ active: loginMode === 'password' }"
-          @click="loginMode = 'password'"
+          @click="switchLoginMode('password')"
         >密码登录</span>
         <span 
           class="tab-item" 
-          :class="{ active: loginMode === 'face' }"
-          @click="loginMode = 'face'"
+          :class="{ active: loginMode === 'face', disabled: !agreementAccepted }"
+          @click="switchLoginMode('face')"
         >人脸登录</span>
       </div>
 
@@ -61,6 +61,7 @@
             type="primary"
             size="large"
             :loading="loading"
+            :disabled="!agreementAccepted"
             class="login-btn"
             @click="handleLogin"
           >
@@ -75,8 +76,17 @@
         @close="loginMode = 'password'" 
       />
 
+      <div class="agreement-row">
+        <el-checkbox v-model="agreementAccepted">
+          我已阅读并同意
+        </el-checkbox>
+        <button type="button" class="agreement-link" @click="serviceDialogVisible = true">《服务协议》</button>
+        <span>和</span>
+        <button type="button" class="agreement-link" @click="privacyDialogVisible = true">《隐私政策》</button>
+      </div>
+
       <div class="login-footer">
-        <span>管理员: admin / admin123</span>
+        <span>本系统由 wintall 主导，感谢使用</span>
         <span class="forget-link" @click="openResetDialog">忘记密码？</span>
       </div>
     </div>
@@ -126,6 +136,28 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="serviceDialogVisible" title="服务协议" width="520px">
+      <div class="policy-content">
+        <p>欢迎使用学生信息管理系统。用户应遵守学校管理制度和系统使用规范，不得冒用他人身份、越权访问数据或进行影响系统安全的操作。</p>
+        <p>系统提供教务管理、请假考勤、消息通知、人脸登录、AI 校园助手等功能。涉及新增、修改、删除等重要操作时，请确认信息真实、准确。</p>
+        <p>继续登录即表示您理解并同意按照授权范围使用本系统。</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="acceptAgreementFromDialog(serviceDialogVisible = false)">我已知晓</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="privacyDialogVisible" title="隐私政策" width="520px">
+      <div class="policy-content">
+        <p>为完成身份认证、教务查询、请假考勤、消息通知和 AI 助手服务，系统会在授权范围内处理账号信息、角色权限、教务数据、登录日志、人脸特征向量和上传文件。</p>
+        <p>人脸识别仅保存数学特征向量，不以登录用途保存摄像头原始画面。上传文件仅用于用户主动发起的识别、总结、翻译或知识库处理。</p>
+        <p>系统会根据角色权限控制数据访问，普通用户不能通过前端或 AI 助手绕过权限查看敏感数据。</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="acceptAgreementFromDialog(privacyDialogVisible = false)">我已知晓</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -144,6 +176,9 @@ const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const loginMode = ref<'password' | 'face'>('password')
+const agreementAccepted = ref(false)
+const serviceDialogVisible = ref(false)
+const privacyDialogVisible = ref(false)
 
 const form = reactive({
   account: '',
@@ -155,7 +190,24 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
+function switchLoginMode(mode: 'password' | 'face') {
+  if (mode === 'face' && !agreementAccepted.value) {
+    ElMessage.warning('请先阅读并同意服务协议和隐私政策')
+    return
+  }
+  loginMode.value = mode
+}
+
+function acceptAgreementFromDialog(_: boolean) {
+  agreementAccepted.value = true
+}
+
 async function handleLogin() {
+  if (!agreementAccepted.value) {
+    ElMessage.warning('请先阅读并同意服务协议和隐私政策')
+    return
+  }
+
   // 1. 表单验证
   if (!form.account || !form.password) {
     ElMessage.warning('请输入账号和密码')
@@ -439,6 +491,11 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.tab-item.disabled {
+  color: #b4b8c0;
+  cursor: not-allowed;
+}
+
 .subtitle {
   color: #6b7280;
   font-size: 13px;
@@ -472,13 +529,48 @@ onBeforeUnmount(() => {
   opacity: 0.92;
 }
 
+.agreement-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 14px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.agreement-row :deep(.el-checkbox) {
+  height: auto;
+  margin-right: 0;
+}
+
+.agreement-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #409eff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.agreement-link:hover {
+  text-decoration: underline;
+}
+
 .login-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-top: 20px;
   font-size: 13px;
   color: #6b7280;
+}
+
+.login-footer span:first-child {
+  min-width: 0;
+  line-height: 1.5;
 }
 
 .forget-link {
@@ -500,6 +592,16 @@ onBeforeUnmount(() => {
   margin-left: 8px;
   color: #909399;
   font-size: 13px;
+}
+
+.policy-content {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.policy-content p {
+  margin: 0 0 10px;
 }
 
 .copyright {

@@ -210,6 +210,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '名著问答', icon: 'Reading' },
       },
       {
+        path: 'rag/knowledge',
+        name: 'RagKnowledgeBase',
+        component: () => import('@/views/rag/KnowledgeBase.vue'),
+        meta: { title: '综合知识库', icon: 'Collection' },
+      },
+      {
         path: 'rag/qa-pair',
         name: 'RagQaPair',
         component: () => import('@/views/rag/QaPairManage.vue'),

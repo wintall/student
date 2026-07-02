@@ -59,13 +59,36 @@ class CampusAgentExecutor:
 
         return tool, None
 
-    def execute(self, user: User, tool_code: str, args: dict | None = None, confirmed: bool = False) -> ToolExecutionResult:
+    def execute(
+        self,
+        user: User,
+        tool_code: str,
+        args: dict | None = None,
+        confirmed: bool = False,
+        session_id: str | None = None,
+    ) -> ToolExecutionResult:
         tool, error = self.validate_tool_access(user, tool_code)
         if error:
             return error
         assert tool is not None
 
         if tool.confirm_required and not confirmed:
+            tool_payload = execute_registered_tool(
+                tool.code,
+                user,
+                {**(args or {}), "_prepare": True, "_session_id": session_id},
+                self.db,
+            )
+            if tool_payload is not None:
+                return ToolExecutionResult(
+                    success=False,
+                    tool=tool.code,
+                    status=tool_payload.get("status") or "confirm_required",
+                    message=tool_payload.get("message") or f"我识别到你要执行“{tool.name}”，需要确认后才能继续。",
+                    confirm_required=bool(tool_payload.get("confirm_required", True)),
+                    risk=tool.risk,
+                    data=tool_payload.get("data"),
+                )
             return ToolExecutionResult(
                 success=False,
                 tool=tool.code,

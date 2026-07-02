@@ -6,6 +6,7 @@
 - 日志格式：[时间] [级别] [模块] [request_id] 消息
 """
 import os
+import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
@@ -21,6 +22,12 @@ class RequestIDFilter(logging.Filter):
 
 def setup_logging():
     """初始化应用日志"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     log_dir = os.path.dirname(settings.LOG_FILE)
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
@@ -47,7 +54,7 @@ def setup_logging():
     file_handler.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
     # 控制台处理器
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(fmt)
     console_handler.addFilter(request_id_filter)
     console_handler.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
@@ -55,6 +62,7 @@ def setup_logging():
     # 配置根日志器
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
+    root_logger.handlers.clear()
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
 

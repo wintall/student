@@ -4,8 +4,22 @@
 """
 from typing import Optional, Dict, Any, List, Callable
 from sqlalchemy.orm import Session
-from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
+
+try:
+    from langchain_core.tools import StructuredTool
+except ModuleNotFoundError:
+    class StructuredTool:  # type: ignore[no-redef]
+        """Minimal fallback so the backend can start without LangChain installed."""
+
+        def __init__(self, name: str, func: Callable, args_schema=None, description: str = ""):
+            self.name = name
+            self.func = func
+            self.args_schema = args_schema
+            self.description = description
+
+        def invoke(self, args: dict | None = None):
+            return self.func(**(args or {}))
 
 from app.models.student import Student
 from app.models.teacher import Teacher
@@ -21,6 +35,7 @@ from app.schemas.clazz import ClazzCreate, ClazzUpdate
 from app.schemas.course import CourseCreate, CourseUpdate
 from app.services import student_service, teacher_service, clazz_service, course_service
 from app.database import engine
+from app.core.permissions import get_user_permission_codes, has_permission as rbac_has_permission
 
 
 PERMISSIONS = {
@@ -80,6 +95,25 @@ ROLE_PERMISSIONS = {
     ],
 }
 
+LEGACY_PERMISSION_MAP = {
+    "student:query": "people:student:list",
+    "student:create": "people:student:create",
+    "student:update": "people:student:update",
+    "student:delete": "people:student:delete",
+    "teacher:query": "people:teacher:list",
+    "teacher:create": "people:teacher:create",
+    "teacher:update": "people:teacher:update",
+    "teacher:delete": "people:teacher:delete",
+    "clazz:query": "org:clazz:list",
+    "clazz:create": "org:clazz:create",
+    "clazz:update": "org:clazz:update",
+    "clazz:delete": "org:clazz:delete",
+    "course:query": "teaching:course:list",
+    "course:create": "teaching:course:create",
+    "course:update": "teaching:course:update",
+    "course:delete": "teaching:course:delete",
+}
+
 
 def get_user_roles(user: User, db: Session) -> List[str]:
     """获取用户角色列表"""
@@ -91,31 +125,20 @@ def get_user_roles(user: User, db: Session) -> List[str]:
 
 def check_permission(user: User, db: Session, perm_code: str) -> bool:
     """检查用户是否拥有指定权限"""
-    roles = get_user_roles(user, db)
-    
-    if "admin" in roles:
-        return True
-    
-    for role in roles:
-        if role in ROLE_PERMISSIONS and perm_code in ROLE_PERMISSIONS[role]:
-            return True
-    
-    return False
+    required_code = LEGACY_PERMISSION_MAP.get(perm_code, perm_code)
+    return rbac_has_permission(user, db, required_code)
 
 
 def get_user_permission_list(user: User, db: Session) -> List[str]:
     """获取用户的所有权限列表"""
-    roles = get_user_roles(user, db)
-    
-    if "admin" in roles:
+    rbac_codes = get_user_permission_codes(user, db)
+    if "*" in rbac_codes:
         return list(PERMISSIONS.keys())
-    
-    perms = set()
-    for role in roles:
-        if role in ROLE_PERMISSIONS:
-            perms.update(ROLE_PERMISSIONS[role])
-    
-    return list(perms)
+    return [
+        legacy_code
+        for legacy_code, rbac_code in LEGACY_PERMISSION_MAP.items()
+        if rbac_code in rbac_codes
+    ]
 
 
 def get_database_schema(db: Session) -> Dict[str, Any]:

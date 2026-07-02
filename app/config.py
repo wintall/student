@@ -88,10 +88,36 @@ class Settings(BaseSettings):
     DEEPSEEK_API_URL_V4: str = "https://api.deepseek.com/v1/chat/completions"
     DEEPSEEK_MODEL_V4: str = "deepseek-v4-flash"
 
+    # ---- Local LLM / Ollama ----
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_MODEL: str = "qwen:7b-chat"
+    OLLAMA_TIMEOUT_SECONDS: int = 90
+
+    # ---- Campus Agent structured intent LLM ----
+    CAMPUS_AGENT_INTENT_PROVIDER: str = "deepseek"  # deepseek/qwen
+    QWEN_API_KEY: str = ""
+    QWEN_API_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+    QWEN_MODEL: str = "qwen-plus"
+
+    # ---- Web Search / MCP Search ----
+    TAVILY_API_KEY: str = ""
+    TAVILY_SEARCH_URL: str = "https://api.tavily.com/search"
+    SEARCH_PROVIDER: str = "tavily"
+    SEARCH_TIMEOUT_SECONDS: int = 12
+
+    # ---- GitHub ----
+    GITHUB_TOKEN: str = ""
+    GITHUB_API_BASE: str = "https://api.github.com"
+    GITHUB_TIMEOUT_SECONDS: int = 15
+
     # ---- 高德地图 ----
     AMAP_KEY: str = "436cc97cb02b3067da8f31c938b1b56a"
+    AMAP_WEB_SERVICE_KEY: str = ""
+    AMAP_JS_API_KEY: str = ""
+    AMAP_JS_SECURITY_CODE: str = ""
     AMAP_IP_LOCATION_URL: str = "https://restapi.amap.com/v3/ip"
     AMAP_WEATHER_URL: str = "https://restapi.amap.com/v3/weather/weatherInfo"
+    SCHOOL_ADDRESS: str = "北京市海淀区颐和园路5号"
 
     # ---- 文件上传 ----
     UPLOAD_DIR: str = "uploads"
@@ -108,20 +134,35 @@ class Settings(BaseSettings):
         """邮件附件目录"""
         return os.path.join(self.ABS_UPLOAD_DIR, "email_attachments")
 
+    # ---- Code Analysis ----
+    CODE_ANALYSIS_ALLOWED_ROOTS: List[str] = []
+
+    @field_validator("CODE_ANALYSIS_ALLOWED_ROOTS", mode="before")
+    @classmethod
+    def parse_code_analysis_allowed_roots(cls, v):
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else [v]
+            except json.JSONDecodeError:
+                return [item.strip() for item in v.split(";") if item.strip()]
+        return v
+
     # ---- RAG / 向量检索 ----
     # Embedding 模型：默认本地 m3e-base（纯免费，中文效果好；首次运行自动下载）
     # 如网络不通可切换到 text2vec-base-chinese（备选），或改为 external 使用第三方 API
     RAG_EMBEDDING_MODEL: str = "moka-ai/m3e-base"
     RAG_VECTOR_DIM: int = 768
     # 每段最大字符数（超出自动切分）；两段之间保留 overlap 以保持上下文
-    RAG_CHUNK_SIZE: int = 220
-    RAG_CHUNK_OVERLAP: int = 40
+    RAG_CHUNK_SIZE: int = 700
+    RAG_CHUNK_OVERLAP: int = 100
     # 向量搜索默认参数
     RAG_TOP_K: int = 5
     RAG_MIN_SCORE: float = 0.45
     # Milvus 连接配置
     RAG_MILVUS_URI: str = "http://127.0.0.1:19530"
     RAG_MILVUS_COLLECTION: str = "sic_rag_four_books_v1"
+    RAG_KNOWLEDGE_MILVUS_COLLECTION: str = "campus_rag_chunks_v1"
 
     model_config = {
         "env_file": ".env",

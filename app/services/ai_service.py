@@ -9,7 +9,7 @@ import urllib.request
 import urllib.parse
 import logging
 from typing import List, Dict, Optional, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.user import User, Role
 from app.models.department import Department
@@ -87,7 +87,7 @@ def is_admin(user: User, db: Session) -> bool:
 
 def is_staff(user: User, db: Session) -> bool:
     codes = _user_roles(user, db)
-    return "admin" in codes or "staff" in codes
+    return "admin" in codes or "staff" in codes or any(code.startswith("staff_") for code in codes)
 
 
 def is_student(user: User, db: Session) -> bool:
@@ -146,6 +146,56 @@ def execute_query_my_score(user: User, db: Session) -> Dict:
             "total": len(items),
             "average": round(avg_score, 1),
             "items": items,
+        },
+        "message": "",
+    }
+
+
+def execute_query_score(user: User, text: str, db: Session) -> Dict:
+    """按当前角色查询成绩。学生查本人；管理员/教职工查权限内成绩概览。"""
+    if not is_staff(user, db):
+        return execute_query_my_score(user, db)
+
+    q = db.query(Score).options(
+        joinedload(Score.student),
+        joinedload(Score.course),
+        joinedload(Score.exam),
+    ).filter(Score.is_deleted == False)
+
+    keyword = (text or "").strip()
+    cleanup_words = ["查成绩", "查询成绩", "成绩查询", "学生成绩", "成绩", "分数", "查", "查询", "看一下", "看看", "我的"]
+    for word in cleanup_words:
+        keyword = keyword.replace(word, " ")
+    keyword = " ".join(keyword.split()).strip()
+    if keyword:
+        like = f"%{keyword}%"
+        from sqlalchemy import or_
+        q = q.join(Student, Score.student_id == Student.id).join(Course, Score.course_id == Course.id).join(Exam, Score.exam_id == Exam.id)
+        q = q.filter(or_(Student.name.like(like), Student.student_no.like(like), Course.name.like(like), Exam.name.like(like)))
+
+    total = q.count()
+    scores = q.order_by(Score.id.desc()).limit(10).all()
+    items = []
+    for s in scores:
+        items.append({
+            "student_name": s.student.name if s.student else "",
+            "student_no": s.student.student_no if s.student else "",
+            "exam": s.exam.name if s.exam else "未知考试",
+            "course": s.course.name if s.course else "未知课程",
+            "score": float(s.score) if s.score is not None else None,
+            "grade": s.grade or "",
+            "rank": s.rank_in_class,
+        })
+
+    scored_values = [item["score"] for item in items if item["score"] is not None]
+    average = round(sum(scored_values) / len(scored_values), 1) if scored_values else None
+    return {
+        "type": "score",
+        "data": {
+            "total": total,
+            "average": average,
+            "items": items,
+            "keyword": keyword,
         },
         "message": "",
     }
@@ -420,6 +470,20 @@ def _generate_reply(user: User, text: str, query_result: Dict, db: Session) -> s
         lines = [f"📊 {it['exam']} - {it['course']}：{it['score']}分" for it in data["items"][:10]]
         return "\n".join([f"你的成绩单（共{data['total']}条，平均分 {data['average']}）："] + lines)
 
+    if msg_type == "score":
+        items = data.get("items", [])
+        if not items:
+            return "没有查询到匹配的成绩记录。"
+        title = f"已查询到 {data.get('total', len(items))} 条成绩记录"
+        if data.get("average") is not None:
+            title += f"，当前展示记录平均分 {data['average']}"
+        lines = []
+        for it in items[:10]:
+            score_text = "未录入" if it.get("score") is None else f"{it['score']}分"
+            rank_text = f"，班级排名 {it['rank']}" if it.get("rank") else ""
+            lines.append(f"📊 {it.get('student_name')}（{it.get('student_no')}）- {it.get('course')} / {it.get('exam')}：{score_text}{rank_text}")
+        return "\n".join([title + "："] + lines)
+
     if msg_type == "count":
         lines = [f"• {k}：{v}" for k, v in data.items()]
         return "📈 当前统计：\n" + "\n".join(lines)
@@ -508,7 +572,7 @@ def chat(user: User, message: str, db: Session) -> Dict:
     query_result = {"type": "chat", "data": {}, "message": ""}
 
     if intent == "query_my_score":
-        query_result = execute_query_my_score(user, db)
+        query_result = execute_query_score(user, text, db) if is_staff(user, db) else execute_query_my_score(user, db)
     elif intent == "query_count":
         query_result = execute_query_count(user, text, db)
     elif intent == "query_announcement":
@@ -522,7 +586,9 @@ def chat(user: User, message: str, db: Session) -> Dict:
         query_result = execute_query_class(user, db)
     elif intent == "query_teacher":
         query_result = execute_query_teacher(user, db)
-    elif intent in ("query_student", "query_score"):
+    elif intent == "query_score":
+        query_result = execute_query_score(user, text, db)
+    elif intent == "query_student":
         query_result = execute_query_student(user, text, db)
 
     # 生成回复

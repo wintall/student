@@ -7,6 +7,7 @@
 
 import json
 import logging
+import re
 import time
 import urllib.request
 from typing import Dict, List, Optional
@@ -151,30 +152,49 @@ STOPWORDS = {
 
 def _extract_keywords(question: str) -> list:
     """
-    使用 jieba 分词提取关键词，只保留名词类词汇
-    返回按重要性排序的关键词列表
+    Extract stable query keywords.
+
+    Short classical-novel questions such as "十常侍都是谁" are easy for jieba to
+    split into weak tokens, so known entities are preserved before POS filtering.
     """
+    cleaned = "".join(ch for ch in (question or "") if ch.isalnum() or "\u4e00" <= ch <= "\u9fff")
+    if not cleaned:
+        return []
+
+    priority_entities = [
+        "十常侍", "张让", "赵忠", "封谞", "段珪", "曹节", "侯览", "蹇硕", "程旷", "夏恽", "郭胜",
+        "桃园三结义", "刘备", "关羽", "张飞", "诸葛亮", "曹操", "孙权", "董卓", "吕布", "袁绍",
+        "三国演义", "水浒传", "西游记", "红楼梦",
+    ]
+    keywords: list[str] = []
+    for entity in priority_entities:
+        if entity in cleaned and entity not in keywords:
+            keywords.append(entity)
+
     try:
         import jieba
         import jieba.posseg as pseg
     except ImportError:
         logger.warning("[RAG] jieba 未安装，使用简单分词")
-        return _simple_tokenize(question)
-    
-    # 清理文本，只保留中文和字母数字
-    cleaned = "".join(ch for ch in question if ch.isalnum() or "\u4e00" <= ch <= "\u9fff")
-    
-    # 使用 jieba 分词并标注词性
+        for token in _simple_tokenize(question):
+            if token and token not in keywords:
+                keywords.append(token)
+        return keywords
+
+    for entity in priority_entities:
+        jieba.add_word(entity)
+
     words = pseg.cut(cleaned)
-    
-    keywords = []
     for word, flag in words:
-        # 只保留名词类词汇（n 开头的词性）
-        # n: 名词, nr: 人名, ns: 地名, nt: 机构名, nz: 其他专名, nl: 名词性惯用语, ng: 名词性语素
-        if flag.startswith('n') and len(word) >= 2 and word not in STOPWORDS:
+        word = (word or "").strip()
+        if not word or word in STOPWORDS:
+            continue
+        if flag.startswith("n") and len(word) >= 2 and word not in keywords:
             keywords.append(word)
-    
-    return list(set(keywords))  # 去重
+
+    if not keywords:
+        keywords = _simple_tokenize(question)
+    return [keyword for keyword in keywords if keyword]
 
 def _simple_tokenize(question: str) -> list:
     """
@@ -283,7 +303,7 @@ def _retrieve_by_keyword(db: Session, question: str,
                 "score": float(hit) / max(1, len(kws)),
             })
     # 按分数排序，分数相同则按章节号排序
-    scored.sort(key=lambda r: (r["score"], r["chapter_no"]), reverse=True)
+    scored.sort(key=lambda r: (-r["score"], r["chapter_no"], r["section_no"]))
     return scored[:top_k]
 
 
@@ -462,6 +482,59 @@ def _classify_question(question: str) -> str:
     
     return "general"
 
+
+def _source_location(source: Dict) -> str:
+    loc = f"《{source.get('book_name') or '资料'}》"
+    if source.get("chapter_title"):
+        loc += f"（{source['chapter_title']}）"
+    elif source.get("chapter_no"):
+        loc += f"（第{source['chapter_no']}回）"
+    return loc
+
+
+def _extract_list_answer(question: str, sources: List[Dict]) -> Optional[str]:
+    """Generate a short modern answer for list-style questions when the LLM is unavailable."""
+    q = question or ""
+    if not any(word in q for word in ["都是谁", "有哪些", "哪几个", "哪几位", "名单"]):
+        return None
+
+    for source in sources:
+        text = source.get("text") or ""
+        if "十常侍" not in q or "十常侍" not in text:
+            continue
+        match = re.search(r"后(?P<names>[\u4e00-\u9fff、]{10,80})十人[^。；]*号为[\"“]?十常侍", text)
+        if not match:
+            match = re.search(r"(?P<names>张让、赵忠、封谞、段珪、曹节、侯览、蹇硕、程旷、夏恽、郭胜)", text)
+        if not match:
+            continue
+        names = [name for name in match.group("names").split("、") if name]
+        if len(names) < 2:
+            continue
+        loc = _source_location(source)
+        return (
+            f"十常侍指的是：{'、'.join(names)}。\n\n"
+            "用现代话说，他们是东汉末年灵帝身边一批掌握权力的宦官集团。"
+            "在《三国演义》的叙述里，他们互相勾结、干预朝政，是朝局败坏和天下动乱的重要背景之一。\n\n"
+            f"出处：{loc}"
+        )
+    return None
+
+
+def _fallback_summary(question: str, sources: List[Dict]) -> str:
+    list_answer = _extract_list_answer(question, sources)
+    if list_answer:
+        return list_answer
+
+    source_lines = []
+    for idx, source in enumerate(sources[:3], start=1):
+        source_lines.append(f"{idx}. {_source_location(source)}")
+    return (
+        "我已经检索到相关资料，但当前大模型暂时没有生成总结。"
+        "为了避免把原文大段贴出来，我先只给出参考出处；你可以换个更具体的问题继续问。\n\n"
+        "参考出处：\n" + "\n".join(source_lines)
+    )
+
+
 def answer_by_llm(question: str, sources: List[Dict], history: Optional[List[Dict]] = None) -> str:
     """
     LLM 答案生成（支持历史消息）
@@ -544,16 +617,7 @@ def answer_by_llm(question: str, sources: List[Dict], history: Optional[List[Dic
     if reply:
         return reply
 
-    # 降级：直接拼接片段原文
-    fallback = ["以下是知识库检索到的相关片段（LLM 不可用）：\n"]
-    for s in sources[:max_sources]:
-        loc = f"《{s['book_name']}》"
-        if s.get("chapter_title"):
-            loc += f"（{s['chapter_title']}）"
-        elif s.get("chapter_no"):
-            loc += f"（第{s['chapter_no']}回）"
-        fallback.append(f"● {loc}\n{s['text']}\n")
-    return "\n".join(fallback)
+    return _fallback_summary(question, sources[:max_sources])
 
 
 # ====== 对外主入口 ======

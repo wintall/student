@@ -95,7 +95,7 @@
             <div class="tips-text">
               · 点击书名可多选，限定检索范围<br/>
               · 可提问人物、情节、回目、人物关系等<br/>
-              · 回答下方附原文参考段落，可追溯出处
+              · 回答下方附参考出处，不默认展开大段原文
             </div>
           </div>
         </div>
@@ -141,7 +141,7 @@
                   <div v-if="m.sources && m.sources.length" class="sources-block">
                     <div class="sources-title">
                       <el-icon><DocumentCopy /></el-icon>
-                      <span>原文参考 · 共 {{ m.sources.length }} 段</span>
+                      <span>参考出处 · 共 {{ m.sources.length }} 条</span>
                       <span class="sources-line"></span>
                     </div>
                     <div class="sources-list">
@@ -161,11 +161,6 @@
                             <el-icon><TrendCharts /></el-icon>
                             {{ (s.score * 100).toFixed(0) }}%
                           </span>
-                        </div>
-                        <div class="source-quote">
-                          <span class="quote-mark left">「</span>
-                          <span class="source-text">{{ s.text }}</span>
-                          <span class="quote-mark right">」</span>
                         </div>
                       </div>
                     </div>

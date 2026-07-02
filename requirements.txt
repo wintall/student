@@ -14,3 +14,9 @@ python-dotenv==1.0.1
 langchain>=0.2.14
 langchain-openai>=0.1.20
 langchain-community>=0.2.14
+langgraph>=1.2.6
+deepagents>=0.6.12
+tavily-python>=0.7.0
+pypdf>=4.3.1
+Pillow>=12.2.0
+pytesseract>=0.3.13
